@@ -81,60 +81,79 @@ define(["sugar-web/activity/activity"], function (activity) {
             }
         );
 
-        loader.load(
-            // resource URL
-            'models/heart/heart.gltf',
-            // called when the resource is loaded
-            function (gltf) {
-                // Move the heart model up
-                gltf.scene.position.y += 4; // Adjust this value as needed
-                
-                scene.add(gltf.scene);
-
-                gltf.animations; // Array<THREE.AnimationClip>
-                gltf.scene; // THREE.Group
-                gltf.scenes; // Array<THREE.Group>
-                gltf.cameras; // Array<THREE.Camera>
-                gltf.asset; // Object
-            },
-            // called while loading is progressing
-            function (xhr) {
-                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-            },
-            function (error) {
-                console.log('An error happened');
-                console.log(error);
+// Function to set the material color of a model
+function setModelColor(model, color) {
+    model.traverse((node) => {
+        if (node.isMesh) {
+            if (node.material) {
+                node.material.color.set(color);
             }
-        );
+        }
+    });
+}
 
-		loader.load(
-            // resource URL
-            'models/digestive/digestive.gltf',
-            // called when the resource is loaded
-            function (gltf) {
-                // Move the heart model up
-                gltf.scene.position.y += 3 ; // Adjust this value as needed
+// Loader for the heart model
+loader.load(
+    // resource URL
+    'models/heart/heart.gltf',
+    // called when the resource is loaded
+    function (gltf) {
+        // Move the heart model up
+        gltf.scene.position.y += 4; // Adjust this value as needed
 
-				gltf.scene.scale.set(4, 4, 4); // Scale up by a factor of 2
+        // Set the heart model color to red
+        setModelColor(gltf.scene, new THREE.Color(0xff0000));
 
-                
-                scene.add(gltf.scene);
+        scene.add(gltf.scene);
 
-                gltf.animations; // Array<THREE.AnimationClip>
-                gltf.scene; // THREE.Group
-                gltf.scenes; // Array<THREE.Group>
-                gltf.cameras; // Array<THREE.Camera>
-                gltf.asset; // Object
-            },
-            // called while loading is progressing
-            function (xhr) {
-                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-            },
-            function (error) {
-                console.log('An error happened');
-                console.log(error);
-            }
-        );
+        gltf.animations; // Array<THREE.AnimationClip>
+        gltf.scene; // THREE.Group
+        gltf.scenes; // Array<THREE.Group>
+        gltf.cameras; // Array<THREE.Camera>
+        gltf.asset; // Object
+    },
+    // called while loading is progressing
+    function (xhr) {
+        console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+    },
+    function (error) {
+        console.log('An error happened');
+        console.log(error);
+    }
+);
+
+// Loader for the digestive model
+loader.load(
+    // resource URL
+    'models/digestive/digestive.gltf',
+    // called when the resource is loaded
+    function (gltf) {
+        // Move the digestive model up
+        gltf.scene.position.y += 3; // Adjust this value as needed
+
+        // Scale up the digestive model
+        gltf.scene.scale.set(4, 4, 4); // Scale up by a factor of 4
+
+        // Set the digestive model color to red
+        setModelColor(gltf.scene, new THREE.Color(0x00ff00));
+
+        scene.add(gltf.scene);
+
+        gltf.animations; // Array<THREE.AnimationClip>
+        gltf.scene; // THREE.Group
+        gltf.scenes; // Array<THREE.Group>
+        gltf.cameras; // Array<THREE.Camera>
+        gltf.asset; // Object
+    },
+    // called while loading is progressing
+    function (xhr) {
+        console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+    },
+    function (error) {
+        console.log('An error happened');
+        console.log(error);
+    }
+);
 
 		loader.load(
             // resource URL
