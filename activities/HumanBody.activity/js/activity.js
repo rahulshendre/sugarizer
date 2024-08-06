@@ -58,20 +58,23 @@ define(["sugar-web/activity/activity"], function (activity) {
 
         const loader = new THREE.GLTFLoader();
 
-        loader.load(
-            // resource URL
-            'models/skeleton/skeleton.gltf',
-            // called when the resource is loaded
-            function (gltf) {
-                scene.add(gltf.scene);
+        let skeleton;
 
-                gltf.animations; // Array<THREE.AnimationClip>
-                gltf.scene; // THREE.Group
-                gltf.scenes; // Array<THREE.Group>
-                gltf.cameras; // Array<THREE.Camera>
-                gltf.asset; // Object
+        loader.load(
+            'models/skeleton/skeleton.gltf',
+            function (gltf) {
+                skeleton = gltf.scene;
+                skeleton.traverse((node) => {
+                    if (node.isMesh) {
+                        node.userData.originalMaterial = node.material.clone(); // Save the original material
+                    }
+                });
+                skeleton.scale.set(4, 4, 4);
+                skeleton.position.y += -5;
+                scene.add(skeleton);
+
+                console.log('Skeleton loaded', skeleton);
             },
-            // called while loading is progressing
             function (xhr) {
                 console.log((xhr.loaded / xhr.total * 100) + '% loaded');
             },
@@ -81,110 +84,111 @@ define(["sugar-web/activity/activity"], function (activity) {
             }
         );
 
-// Function to set the material color of a model
-function setModelColor(model, color) {
-    model.traverse((node) => {
-        if (node.isMesh) {
-            if (node.material) {
-                node.material.color.set(color);
+        function setModelColor(model, color) {
+            model.traverse((node) => {
+                if (node.isMesh) {
+                    if (node.material) {
+                        node.material.color.set(color);
+                    }
+                }
+            });
+        }
+
+        loader.load(
+            'models/heart/heart.gltf',
+            function (gltf) {
+                gltf.scene.position.y += 4;
+                setModelColor(gltf.scene, new THREE.Color(0xff0000));
+                scene.add(gltf.scene);
+
+                console.log('Heart loaded', gltf.scene);
+            },
+            function (xhr) {
+                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+            },
+            function (error) {
+                console.log('An error happened');
+                console.log(error);
+            }
+        );
+
+        loader.load(
+            'models/digestive/digestive.gltf',
+            function (gltf) {
+                gltf.scene.position.y += 3;
+                gltf.scene.scale.set(4, 4, 4);
+                setModelColor(gltf.scene, new THREE.Color(0x00ff00));
+                scene.add(gltf.scene);
+
+                console.log('Digestive system loaded', gltf.scene);
+            },
+            function (xhr) {
+                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+            },
+            function (error) {
+                console.log('An error happened');
+                console.log(error);
+            }
+        );
+
+        loader.load(
+            'models/lungs/lungs.gltf',
+            function (gltf) {
+                gltf.scene.position.y += 3;
+                gltf.scene.scale.set(7, 7, 7);
+                scene.add(gltf.scene);
+                console.log('Lungs loaded', gltf.scene);
+            },
+            function (xhr) {
+                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+            },
+            function (error) {
+                console.log('An error happened');
+                console.log(error);
+            }
+        );
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        function onMouseClick(event) {
+            // Calculate mouse position in normalized device coordinates
+            var rect = renderer.domElement.getBoundingClientRect();
+				mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+				mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            // Update the raycaster with the camera and mouse position
+            raycaster.setFromCamera(mouse, camera);
+
+            // Calculate objects intersecting the ray
+            const intersects = raycaster.intersectObjects(scene.children);
+
+            if (intersects.length > 0) {
+                const object = intersects[0].object;
+                console.log('Intersected object:', object);
+
+                if (object.userData.originalMaterial) {
+                    const isRed = object.material.color.equals(new THREE.Color(0xff0000));
+
+                    if (isRed) {
+                        object.material = object.userData.originalMaterial.clone();
+                    } else {
+                        object.material = new THREE.MeshStandardMaterial({
+                            color: 0xff0000,
+                            side: THREE.DoubleSide,
+                        });
+                    }
+                } else {
+                    console.log('No original material found for this object.');
+                }
+            } else {
+                console.log('No intersections found.');
             }
         }
-    });
-}
 
-// Loader for the heart model
-loader.load(
-    // resource URL
-    'models/heart/heart.gltf',
-    // called when the resource is loaded
-    function (gltf) {
-        // Move the heart model up
-        gltf.scene.position.y += 4; // Adjust this value as needed
+        window.addEventListener('click', onMouseClick, false);
 
-        // Set the heart model color to red
-        setModelColor(gltf.scene, new THREE.Color(0xff0000));
-
-        scene.add(gltf.scene);
-
-        gltf.animations; // Array<THREE.AnimationClip>
-        gltf.scene; // THREE.Group
-        gltf.scenes; // Array<THREE.Group>
-        gltf.cameras; // Array<THREE.Camera>
-        gltf.asset; // Object
-    },
-    // called while loading is progressing
-    function (xhr) {
-        console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-    },
-    function (error) {
-        console.log('An error happened');
-        console.log(error);
-    }
-);
-
-// Loader for the digestive model
-loader.load(
-    // resource URL
-    'models/digestive/digestive.gltf',
-    // called when the resource is loaded
-    function (gltf) {
-        // Move the digestive model up
-        gltf.scene.position.y += 3; // Adjust this value as needed
-
-        // Scale up the digestive model
-        gltf.scene.scale.set(4, 4, 4); // Scale up by a factor of 4
-
-        // Set the digestive model color to red
-        setModelColor(gltf.scene, new THREE.Color(0x00ff00));
-
-        scene.add(gltf.scene);
-
-        gltf.animations; // Array<THREE.AnimationClip>
-        gltf.scene; // THREE.Group
-        gltf.scenes; // Array<THREE.Group>
-        gltf.cameras; // Array<THREE.Camera>
-        gltf.asset; // Object
-    },
-    // called while loading is progressing
-    function (xhr) {
-        console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-    },
-    function (error) {
-        console.log('An error happened');
-        console.log(error);
-    }
-);
-
-		loader.load(
-            // resource URL
-            'models/lungs/lungs.gltf',
-            // called when the resource is loaded
-            function (gltf) {
-                // Move the heart model up
-                gltf.scene.position.y += 3; // Adjust this value as needed
-				gltf.scene.scale.set(7, 7, 7); // Scale up by a factor of 2
-
-                scene.add(gltf.scene);
-
-                gltf.animations; // Array<THREE.AnimationClip>
-                gltf.scene; // THREE.Group
-                gltf.scenes; // Array<THREE.Group>
-                gltf.cameras; // Array<THREE.Camera>
-                gltf.asset; // Object
-            },
-            // called while loading is progressing
-            function (xhr) {
-                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-            },
-            function (error) {
-                console.log('An error happened');
-                console.log(error);
-            }
-        );
-
-        animate();
-
-        function animate(time) {
+        function animate() {
             renderer.render(scene, camera);
         }
 
