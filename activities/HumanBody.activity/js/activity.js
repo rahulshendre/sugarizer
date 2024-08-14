@@ -1,4 +1,5 @@
-define(["sugar-web/activity/activity", "sugar-web/env", "activity/palettes/colorpalettefill"], function (activity, env, colorpaletteFill) {
+define(["sugar-web/activity/activity", "sugar-web/env", "activity/palettes/colorpalettefill", 	"activity/palettes/zoompalette",
+], function (activity, env, colorpaletteFill, zoompalette) {
     requirejs(["domReady!"], function (doc) {
         activity.setup();
         let fillColor = null;
@@ -12,6 +13,109 @@ define(["sugar-web/activity/activity", "sugar-web/env", "activity/palettes/color
             undefined
         );
         document.getElementById("color-button-fill").style.backgroundColor = fillColor;
+
+        var paletteZoom = new zoompalette.ZoomPalette(
+			document.getElementById("zoom-button"),
+			undefined
+		);
+
+        const camera = new THREE.PerspectiveCamera(
+            45,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+        );
+
+        const goRightButton = document.querySelector("#right-button");
+		const goLeftButton = document.querySelector("#left-button");
+		const goUpButton = document.querySelector("#up-button");
+		const goDownButton = document.querySelector("#down-button");
+
+		// Handles the rotation of the board through the arrow buttons
+		goRightButton.addEventListener("click", function (event) {
+			orbit.rotateRight();
+			event.stopPropagation();
+		});
+
+		goLeftButton.addEventListener("click", function (event) {
+			orbit.rotateLeft();
+			event.stopPropagation();
+		});
+		goUpButton.addEventListener("click", function (event) {
+			orbit.rotateUp();
+			event.stopPropagation();
+		});
+		goDownButton.addEventListener("click", function (event) {
+			orbit.rotateDown();
+			event.stopPropagation();
+		});
+
+
+        const evt = new Event("wheel", { bubbles: true, cancelable: true });
+
+		const zoomInButton = document.getElementById("zoom-in-button");
+		const zoomOutButton = document.getElementById("zoom-out-button");
+		const zoomEqualButton = document.getElementById("zoom-equal-button");
+		const zoomToButton = document.getElementById("zoom-to-button");
+
+		// Zoom code is self explanatory
+		const zoomInFunction = (e) => {
+			const fov = getFov();
+			camera.fov = clickZoom(fov, "zoomIn");
+			camera.updateProjectionMatrix();
+			e.stopPropagation();
+		};
+
+		const zoomOutFunction = (e) => {
+			const fov = getFov();
+			camera.fov = clickZoom(fov, "zoomOut");
+			camera.updateProjectionMatrix();
+			e.stopPropagation();
+		};
+
+		const zoomEqualFunction = (e) => {
+			const fov = getFov();
+			camera.fov = 29;
+			camera.updateProjectionMatrix();
+			e.stopPropagation();
+		};
+
+		const zoomToFunction = (e) => {
+			const fov = getFov();
+			camera.fov = 35;
+			camera.updateProjectionMatrix();
+			e.stopPropagation();
+		};
+
+		const clickZoom = (value, zoomType) => {
+			if (value >= 20 && zoomType === "zoomIn") {
+				return value - 5;
+			} else if (value <= 75 && zoomType === "zoomOut") {
+				return value + 5;
+			} else {
+				return value;
+			}
+		};
+
+		const getFov = () => {
+			return Math.floor(
+				(2 *
+					Math.atan(
+						camera.getFilmHeight() / 2 / camera.getFocalLength()
+					) *
+					180) /
+					Math.PI
+			);
+		};
+
+		const fov = getFov();
+		camera.updateProjectionMatrix();
+
+		zoomInButton.addEventListener("click", zoomInFunction);
+		zoomOutButton.addEventListener("click", zoomOutFunction);
+		zoomEqualButton.addEventListener("click", zoomEqualFunction);
+		zoomToButton.addEventListener("click", zoomToFunction);
+
 
         // Disable doctor button until body parts are loaded
         const doctorButton = document.querySelector("#doctor-button");
@@ -64,20 +168,24 @@ define(["sugar-web/activity/activity", "sugar-web/env", "activity/palettes/color
         }
 
         function showModal(text) {
-            if (!modal) {
-                modal = document.createElement("div");
-                modal.style.position = "absolute";
-                modal.style.top = "50%";
-                modal.style.left = "50%";
-                modal.style.transform = "translate(-50%, -50%)";
-                modal.style.backgroundColor = "#fff";
-                modal.style.padding = "20px";
-                modal.style.border = "2px solid #000";
-                modal.style.zIndex = "1000";
-                document.body.appendChild(modal);
-            }
+            const modal = document.createElement("div");
+            modal.style.position = "absolute";
+            modal.style.top = "50%";
+            modal.style.left = "50%";
+            modal.style.transform = "translate(-50%, -50%)";
+            modal.style.backgroundColor = "#fff";
+            modal.style.padding = "20px";
+            modal.style.border = "2px solid #000";
+            modal.style.zIndex = "1000";
             modal.innerHTML = text;
+            document.body.appendChild(modal);
+        
+            // Make the modal disappear after 2 seconds
+            setTimeout(() => {
+                document.body.removeChild(modal);
+            }, 1500);
         }
+        
 
         const redSliderFill = document.getElementById("red-slider-fill");
         const greenSliderFill = document.getElementById("green-slider-fill");
@@ -195,12 +303,7 @@ define(["sugar-web/activity/activity", "sugar-web/env", "activity/palettes/color
         const ambientLight = new THREE.AmbientLight(0x222222); // Soft ambient lighting
         scene.add(ambientLight);
 
-        const camera = new THREE.PerspectiveCamera(
-            45,
-            window.innerWidth / window.innerHeight,
-            0.1,
-            1000
-        );
+        
         camera.position.set(0, 10, 20);
         camera.lookAt(0, 0, 0);
 
@@ -266,45 +369,49 @@ define(["sugar-web/activity/activity", "sugar-web/env", "activity/palettes/color
             }
         );
 
-        loader.load(
-            'models/digestive/digestive.gltf',
-            function (gltf) {
-                gltf.scene.position.y += 3;
-                gltf.scene.scale.set(4, 4, 4);
-                setModelColor(gltf.scene, new THREE.Color(0x00ff00));
-                scene.add(gltf.scene);
+        // loader.load(
+        //     'models/digestive/digestive.gltf',
+        //     function (gltf) {
+        //         gltf.scene.position.y += 3;
+        //         gltf.scene.scale.set(4, 4, 4);
+        //         setModelColor(gltf.scene, new THREE.Color(0x00ff00));
+        //         scene.add(gltf.scene);
 
-                console.log('Digestive system loaded', gltf.scene);
-            },
-            function (xhr) {
-                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-            },
-            function (error) {
-                console.log('An error happened');
-                console.log(error);
-            }
-        );
+        //         console.log('Digestive system loaded', gltf.scene);
+        //     },
+        //     function (xhr) {
+        //         console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+        //     },
+        //     function (error) {
+        //         console.log('An error happened');
+        //         console.log(error);
+        //     }
+        // );
 
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
 
         function onMouseClick(event) {
-            // if (!doctorMode) return;
-
             const rect = renderer.domElement.getBoundingClientRect();
             mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
             mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
+        
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects(scene.children, true);
-
+        
             if (intersects.length > 0) {
                 const object = intersects[0].object;
+        
+                // Display the name of the clicked body part
+                let clickedBodyPart = bodyParts.find(part => part.mesh === object.name);
+                if (clickedBodyPart) {
+                    showModal(`You clicked on: ${clickedBodyPart.name}`);
+                }
+        
                 if (!doctorMode) {
-
                     if (object.userData.originalMaterial) {
                         const isColor = object.material.color.equals(new THREE.Color(fillColor));
-    
+        
                         if (isColor) {
                             object.material = object.userData.originalMaterial.clone();
                         } else {
@@ -314,15 +421,14 @@ define(["sugar-web/activity/activity", "sugar-web/env", "activity/palettes/color
                             });
                         }
                     }
-    
                 } else {
                     const targetMeshName = bodyParts[currentBodyPartIndex].mesh;
                     if (object.name === targetMeshName) {
                         showModal("Correct! Next: " + bodyParts[++currentBodyPartIndex]?.name);
                     } else {
-                        showModal("Wrong! Try again.");
+                        showModal("Wrong! Try to find " + bodyParts[++currentBodyPartIndex]?.name);
                     }
-    
+        
                     if (currentBodyPartIndex >= bodyParts.length) {
                         showModal("Game over! You found all parts.");
                         stopDoctorMode();
@@ -330,6 +436,7 @@ define(["sugar-web/activity/activity", "sugar-web/env", "activity/palettes/color
                 }
             }
         }
+        
 
         window.addEventListener('click', onMouseClick, false);
 

@@ -48,6 +48,12 @@
 				title="Doctor Mode"
 			></button>
 
+			<button
+					class="toolbutton"
+					id="zoom-button"
+					title="zoom palette"
+				></button>
+
 			<!-- Add more buttons here -->
 
 			<!-- Buttons with class="pull-right" will be right aligned -->
@@ -57,7 +63,25 @@
 				title="Stop"
 			></button>
 		</div>
-
+			<!-- <button id="throw-button">Throw the Dice</button> -->
+			<div id="score-container">
+				<!-- <p id="total-score">Total Score: <span id="score">0</span> </p> -->
+				<div class="arrow-container">
+					<button id="up-button" class="arrow-button"></button>
+					<div class="left-right-buttons">
+						<button
+							id="left-button"
+							class="arrow-button left"
+						></button>
+						<button
+							id="right-button"
+							class="arrow-button right"
+						></button>
+					</div>
+					<button id="down-button" class="arrow-button down"></button>
+				</div>
+			</div>
+		
 		<!-- The content of your activity goes inside the canvas -->
 		<div id="canvas"></div>
 	</body>
