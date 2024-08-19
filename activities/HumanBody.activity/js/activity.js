@@ -4,7 +4,15 @@ define([
     'activity/palettes/colorpalettefill',
     'activity/palettes/zoompalette',
     'activity/palettes/settingspalette',
-], function (activity, env, colorpaletteFill, zoompalette, settingspalette) {
+    'sugar-web/graphics/presencepalette',
+], function (
+    activity,
+    env,
+    colorpaletteFill,
+    zoompalette,
+    settingspalette,
+    presencepalette
+) {
     requirejs(['domReady!'], function (doc) {
         activity.setup()
         let fillColor = null
@@ -12,6 +20,7 @@ define([
         let currentBodyPartIndex = 0
         let bodyParts = []
         let modal = null
+        let partsColored = []
 
         var paletteColorFill = new colorpaletteFill.ColorPalette(
             document.getElementById('color-button-fill'),
@@ -22,6 +31,115 @@ define([
             document.getElementById('settings-button'),
             undefined
         )
+
+        // Link presence palette
+        var presence = null
+        var palette = new presencepalette.PresencePalette(
+            document.getElementById('network-button'),
+            undefined
+        )
+        palette.addEventListener('shared', function () {
+            palette.popDown()
+            console.log('Want to share')
+            presence = activity.getPresenceObject(function (error, network) {
+                if (error) {
+                    console.log('Sharing error')
+                    return
+                }
+                network.createSharedActivity(
+                    'org.sugarlabs.HumanBody',
+                    function (groupId) {
+                        console.log('Activity shared')
+                    }
+                )
+                network.onDataReceived(onNetworkDataReceived)
+                network.onSharedActivityUserChanged(onNetworkUserChanged)
+            })
+        })
+
+        var onNetworkDataReceived = function (msg) {
+            if (presence.getUserInfo().networkId === msg.user.networkId) {
+                return
+            }
+            if (msg.action == 'init') {
+                partsColored = msg.content
+                console.log(partsColored)
+                console.log('getting colors')
+
+                // Load the skeleton model
+                loader.load(
+                    'models/skeleton/skeleton.gltf',
+                    function (gltf) {
+                        skeleton = gltf.scene
+                        skeleton.name = 'skeleton'
+
+                        skeleton.traverse((node) => {
+                            if (node.isMesh) {
+                                node.userData.originalMaterial =
+                                    node.material.clone() // Save the original material
+
+                                // Check if the node's name exists in partsColored array
+                                const part = partsColored.find(
+                                    ([name, color]) => name === node.name
+                                )
+
+                                if (part) {
+                                    const [name, color] = part
+
+                                    // Apply the color from the array
+                                    node.material =
+                                        new THREE.MeshStandardMaterial({
+                                            color: new THREE.Color(color),
+                                            side: THREE.DoubleSide,
+                                        })
+                                }
+
+                                console.log(node.name)
+                            }
+                        })
+
+                        skeleton.scale.set(4, 4, 4)
+                        skeleton.position.y += -5
+                        scene.add(skeleton)
+
+                        console.log('Skeleton loaded', skeleton)
+                    },
+                    function (xhr) {
+                        console.log((xhr.loaded / xhr.total) * 100 + '% loaded')
+                    },
+                    function (error) {
+                        console.log('An error happened')
+                        console.log(error)
+                    }
+                )
+            }
+        }
+
+        env.getEnvironment(function (err, environment) {
+            fillColor = environment.user.colorvalue.fill || fillColor
+
+            document.getElementById('color-button-fill').style.backgroundColor =
+                fillColor
+
+            if (environment.sharedId) {
+                console.log('Shared instance')
+                presence = activity.getPresenceObject(function (
+                    error,
+                    network
+                ) {
+                    network.onDataReceived(onNetworkDataReceived)
+                })
+            }
+        })
+
+        var onNetworkUserChanged = function (msg) {
+            console.log('new user joined')
+            presence.sendMessage(presence.getSharedInfo().id, {
+                user: presence.getUserInfo(),
+                action: 'init',
+                content: partsColored, // sends the diceArray and the present background of the user to the users which are joining
+            })
+        }
 
         // Mode variables to track which mode is active
         let isPaintActive = true
@@ -230,7 +348,9 @@ define([
             .then((response) => response.json())
             .then((data) => {
                 bodyParts = data
-                console.log('Body parts loaded:', bodyParts)
+                for (let i = 0; i < bodyParts.length; i++) {
+                    partsColored.push(bodyParts[i].name, '#000000')
+                }
             })
             .catch((error) => {
                 console.error('Error fetching bodyParts.json:', error)
@@ -251,35 +371,35 @@ define([
         }
 
         function showModal(text) {
-            const modal = document.createElement('div');
-        
+            const modal = document.createElement('div')
+
             // Style the modal
-            modal.style.position = 'absolute';
-            modal.style.top = '50%';
-            modal.style.left = '50%';
-            modal.style.transform = 'translate(-50%, -50%)';
-            modal.style.backgroundColor = '#f9f9f9'; // Light grey background for a softer look
-            modal.style.padding = '30px'; // Increase padding for a larger modal
-            modal.style.border = '3px solid #007bff'; // Blue border for a pop of color
-            modal.style.borderRadius = '8px'; // Rounded corners for a smoother appearance
-            modal.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)'; // Add a shadow for depth
-            modal.style.zIndex = '1000';
-            modal.style.textAlign = 'center'; // Center the text inside the modal
-        
+            modal.style.position = 'absolute'
+            modal.style.top = '50%'
+            modal.style.left = '50%'
+            modal.style.transform = 'translate(-50%, -50%)'
+            modal.style.backgroundColor = '#f9f9f9' // Light grey background for a softer look
+            modal.style.padding = '30px' // Increase padding for a larger modal
+            modal.style.border = '3px solid #007bff' // Blue border for a pop of color
+            modal.style.borderRadius = '8px' // Rounded corners for a smoother appearance
+            modal.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)' // Add a shadow for depth
+            modal.style.zIndex = '1000'
+            modal.style.textAlign = 'center' // Center the text inside the modal
+
             // Style the text inside the modal
-            modal.style.fontSize = '18px'; // Larger text size
-            modal.style.fontWeight = 'bold'; // Bold text
-            modal.style.color = '#333'; // Darker text color for better contrast
-        
-            modal.innerHTML = text;
-            document.body.appendChild(modal);
-        
+            modal.style.fontSize = '18px' // Larger text size
+            modal.style.fontWeight = 'bold' // Bold text
+            modal.style.color = '#333' // Darker text color for better contrast
+
+            modal.innerHTML = text
+            document.body.appendChild(modal)
+
             // Make the modal disappear after 1.5 seconds
             setTimeout(() => {
-                document.body.removeChild(modal);
-            }, 1500);
+                document.body.removeChild(modal)
+            }, 1500)
         }
-        
+
         const redSliderFill = document.getElementById('red-slider-fill')
         const greenSliderFill = document.getElementById('green-slider-fill')
         const blueSliderFill = document.getElementById('blue-slider-fill')
@@ -345,23 +465,6 @@ define([
                 fillColor
             updateSlidersFill(selectedColorFill)
         })
-
-        env.getEnvironment(function (err, environment) {
-            fillColor = environment.user.colorvalue.fill || fillColor
-
-            document.getElementById('color-button-fill').style.backgroundColor =
-                fillColor
-
-            if (environment.sharedId) {
-                const presence = activity.getPresenceObject(function (
-                    error,
-                    network
-                ) {
-                    network.onDataReceived(onNetworkDataReceived)
-                })
-            }
-        })
-
         const renderer = new THREE.WebGLRenderer({
             antialias: true,
             alpha: true,
@@ -413,30 +516,33 @@ define([
         const loader = new THREE.GLTFLoader()
         let skeleton
 
-        loader.load(
-            'models/skeleton/skeleton.gltf',
-            function (gltf) {
-                skeleton = gltf.scene
-                skeleton.name = 'skeleton'
-                skeleton.traverse((node) => {
-                    if (node.isMesh) {
-                        node.userData.originalMaterial = node.material.clone() // Save the original material
-                    }
-                })
-                skeleton.scale.set(4, 4, 4)
-                skeleton.position.y += -5
-                scene.add(skeleton)
+        if (presence == null) {
+            loader.load(
+                'models/skeleton/skeleton.gltf',
+                function (gltf) {
+                    skeleton = gltf.scene
+                    skeleton.name = 'skeleton'
+                    skeleton.traverse((node) => {
+                        if (node.isMesh) {
+                            node.userData.originalMaterial =
+                                node.material.clone() // Save the original material
+                        }
+                    })
+                    skeleton.scale.set(4, 4, 4)
+                    skeleton.position.y += -5
+                    scene.add(skeleton)
 
-                console.log('Skeleton loaded', skeleton)
-            },
-            function (xhr) {
-                console.log((xhr.loaded / xhr.total) * 100 + '% loaded')
-            },
-            function (error) {
-                console.log('An error happened')
-                console.log(error)
-            }
-        )
+                    console.log('Skeleton loaded', skeleton)
+                },
+                function (xhr) {
+                    console.log((xhr.loaded / xhr.total) * 100 + '% loaded')
+                },
+                function (error) {
+                    console.log('An error happened')
+                    console.log(error)
+                }
+            )
+        }
 
         function setModelColor(model, color) {
             model.traverse((node) => {
@@ -525,9 +631,34 @@ define([
 
                 if (isPaintActive) {
                     if (object.userData.originalMaterial) {
-                        const isColor = object.material.color.equals(
-                            new THREE.Color(fillColor)
+                        const isColor = !object.material.color.equals(
+                            new THREE.Color("#ffffff")
                         )
+                        // Traverse partsColored array to check if the object with the same name already exists
+                        const index = partsColored.findIndex(
+                            ([name, color]) => name === object.name
+                        )
+
+                        // If it exists, remove it from the array
+                        if (index !== -1) {
+                            partsColored.splice(index, 1)
+                        }
+
+                        // Push the new entry with the updated color
+                        partsColored.push([
+                            object.name,
+                            isColor ? '#ffffff' : fillColor,
+                        ])
+
+                        if (presence) {
+                            console.log(partsColored)
+                            console.log('sending colors')
+                            presence.sendMessage(presence.getSharedInfo().id, {
+                                user: presence.getUserInfo(),
+                                action: 'init',
+                                content: partsColored, // sends the diceArray and the present background of the user to the users which are joining
+                            })
+                        }
 
                         if (isColor) {
                             object.material =
