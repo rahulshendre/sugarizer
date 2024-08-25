@@ -21,6 +21,9 @@ define([
         let bodyParts = []
         let modal = null
         let partsColored = []
+        let username = null
+        let players = []
+        let isHost = false
 
         var paletteColorFill = new colorpaletteFill.ColorPalette(
             document.getElementById('color-button-fill'),
@@ -31,6 +34,93 @@ define([
             document.getElementById('settings-button'),
             undefined
         )
+
+        document
+            .getElementById('stop-button')
+            .addEventListener('click', function (event) {
+                console.log('writing...')
+                var jsonData = JSON.stringify(partsColored)
+                activity.getDatastoreObject().setDataAsText(jsonData)
+                activity.getDatastoreObject().save(function (error) {
+                    if (error === null) {
+                        console.log('write done.')
+                    } else {
+                        console.log('write failed.')
+                    }
+                })
+            })
+
+        env.getEnvironment(function (err, environment) {
+            currentenv = environment
+            username = environment.user.name
+
+            // Load from datastore
+            // Load from datastore
+            if (!environment.objectId) {
+                console.log('New instance')
+            } else {
+                activity
+                    .getDatastoreObject()
+                    .loadAsText(function (error, metadata, data) {
+                        if (error == null && data != null) {
+                            partsColored = JSON.parse(data)
+                            loader.load(
+                                'models/skeleton/skeleton.gltf',
+                                function (gltf) {
+                                    skeleton = gltf.scene
+                                    skeleton.name = 'skeleton'
+
+                                    skeleton.traverse((node) => {
+                                        if (node.isMesh) {
+                                            node.userData.originalMaterial =
+                                                node.material.clone() // Save the original material
+
+                                            // Check if the node's name exists in partsColored array
+                                            const part = partsColored.find(
+                                                ([name, color]) =>
+                                                    name === node.name
+                                            )
+
+                                            if (part) {
+                                                const [name, color] = part
+
+                                                // Apply the color from the array
+                                                node.material =
+                                                    new THREE.MeshStandardMaterial(
+                                                        {
+                                                            color: new THREE.Color(
+                                                                color
+                                                            ),
+                                                            side: THREE.DoubleSide,
+                                                        }
+                                                    )
+                                            }
+
+                                            console.log(node.name)
+                                        }
+                                    })
+
+                                    skeleton.scale.set(4, 4, 4)
+                                    skeleton.position.y += -5
+                                    scene.add(skeleton)
+
+                                    console.log('Skeleton loaded', skeleton)
+                                },
+                                function (xhr) {
+                                    console.log(
+                                        (xhr.loaded / xhr.total) * 100 +
+                                            '% loaded'
+                                    )
+                                },
+                                function (error) {
+                                    console.log('An error happened')
+                                    console.log(error)
+                                }
+                            )
+                        }
+                    })
+            }
+        })
 
         // Link presence palette
         var presence = null
@@ -50,6 +140,7 @@ define([
                     'org.sugarlabs.HumanBody',
                     function (groupId) {
                         console.log('Activity shared')
+                        isHost = true
                     }
                 )
                 network.onDataReceived(onNetworkDataReceived)
@@ -62,7 +153,10 @@ define([
                 return
             }
             if (msg.action == 'init') {
-                partsColored = msg.content
+                partsColored = msg.content[0]
+                players = msg.content[1]
+                console.log("runing from 158")
+                showLeaderboard();
                 console.log(partsColored)
                 console.log('getting colors')
 
@@ -113,6 +207,13 @@ define([
                     }
                 )
             }
+
+            if (msg.action == 'startDoctor') {
+                console.log('received doctor')
+                console.log("runing from 213")
+
+                showLeaderboard()
+            }
         }
 
         env.getEnvironment(function (err, environment) {
@@ -134,11 +235,26 @@ define([
 
         var onNetworkUserChanged = function (msg) {
             console.log('new user joined')
-            presence.sendMessage(presence.getSharedInfo().id, {
-                user: presence.getUserInfo(),
-                action: 'init',
-                content: partsColored, // sends the diceArray and the present background of the user to the users which are joining
-            })
+            players.push([msg.user.name, 0])
+            console.log("runing from 239")
+            if (isDoctorActive) {
+                showLeaderboard()
+            }
+            if (isHost) {
+                presence.sendMessage(presence.getSharedInfo().id, {
+                    user: presence.getUserInfo(),
+                    action: 'init',
+                    content: [partsColored, players],
+                })
+            }
+
+            if (doctorMode) {
+                presence.sendMessage(presence.getSharedInfo().id, {
+                    user: presence.getUserInfo(),
+                    action: 'startDoctor',
+                    content: players,
+                })
+            }
         }
 
         // Mode variables to track which mode is active
@@ -219,7 +335,47 @@ define([
 
             // If switching to Doctor mode, start it
             if (isDoctorActive) {
-                startDoctorMode()
+                if (presence) {
+                    console.log("runing from 339")
+
+                    showLeaderboard()
+
+                    presence.sendMessage(presence.getSharedInfo().id, {
+                        user: presence.getUserInfo(),
+                        action: 'startDoctor',
+                        content: players,
+                    })
+                    startDoctorModePresence()
+                } else {
+                    console.log('starting doctor mode')
+                    startDoctorMode()
+                }
+            }
+        }
+
+        function showLeaderboard() {
+            console.log("running show leaderboard")
+            var leaderboard = document.getElementById('leaderboard')
+            leaderboard.style.display = 'block'
+            let playerScores = players
+            var tableBody = document.querySelector('.leaderboard tbody');
+
+            tableBody.innerHTML = '';
+            for (var i = 0; i < playerScores.length; i++) {
+                var playerName = playerScores[i][0] // Get player name
+                var playerScore = playerScores[i][1] // Get player score
+
+                // Create a new row
+                var tableBody = document.querySelector('.leaderboard tbody')
+                var newRow = tableBody.insertRow()
+
+                // Create new cells for player name and score
+                var nameCell = newRow.insertCell(0)
+                var scoreCell = newRow.insertCell(1)
+
+                // Set the text content for the cells
+                nameCell.textContent = playerName
+                scoreCell.textContent = playerScore
             }
         }
 
@@ -357,6 +513,13 @@ define([
             })
 
         function startDoctorMode() {
+            currentBodyPartIndex = 0
+            if (bodyParts[currentBodyPartIndex]) {
+                showModal('Find the ' + bodyParts[currentBodyPartIndex].name)
+            }
+        }
+
+        function startDoctorModePresence() {
             currentBodyPartIndex = 0
             if (bodyParts[currentBodyPartIndex]) {
                 showModal('Find the ' + bodyParts[currentBodyPartIndex].name)
@@ -632,7 +795,7 @@ define([
                 if (isPaintActive) {
                     if (object.userData.originalMaterial) {
                         const isColor = !object.material.color.equals(
-                            new THREE.Color("#ffffff")
+                            new THREE.Color('#ffffff')
                         )
                         // Traverse partsColored array to check if the object with the same name already exists
                         const index = partsColored.findIndex(
@@ -656,7 +819,7 @@ define([
                             presence.sendMessage(presence.getSharedInfo().id, {
                                 user: presence.getUserInfo(),
                                 action: 'init',
-                                content: partsColored, // sends the diceArray and the present background of the user to the users which are joining
+                                content: partsColored,
                             })
                         }
 
