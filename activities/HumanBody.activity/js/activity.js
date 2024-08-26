@@ -889,9 +889,9 @@ define([
                                         content: players,
                                     }
                                 )
+                                startDoctorModePresence()
                                 presenceIndex++
                                 showLeaderboard()
-                                startDoctorModePresence()
                             }
                             if (!ifDoctorHost) {
                                 presence.sendMessage(
