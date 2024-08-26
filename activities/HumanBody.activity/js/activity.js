@@ -24,6 +24,10 @@ define([
         let username = null
         let players = []
         let isHost = false
+        let presenceCorrectIndex = 0
+        let presenceIndex = 0
+        let ifDoctorHost = false
+        let firstAnswer = true
 
         var paletteColorFill = new colorpaletteFill.ColorPalette(
             document.getElementById('color-button-fill'),
@@ -155,10 +159,6 @@ define([
             if (msg.action == 'init') {
                 partsColored = msg.content[0]
                 players = msg.content[1]
-                console.log("runing from 158")
-                showLeaderboard();
-                console.log(partsColored)
-                console.log('getting colors')
 
                 // Load the skeleton model
                 loader.load(
@@ -208,11 +208,44 @@ define([
                 )
             }
 
-            if (msg.action == 'startDoctor') {
-                console.log('received doctor')
-                console.log("runing from 213")
+            if (msg.action == 'nextQuestion') {
+                if (bodyParts[msg.content]) {
+                    presenceCorrectIndex = msg.content
+                    showModal('Find the ' + bodyParts[msg.content].name)
+                }
+            }
 
+            if (msg.action == 'update') {
+                players = msg.content;
+                showLeaderboard();
+            }
+
+            if (msg.action == 'answer') {
+                if (!ifDoctorHost || !firstAnswer) {
+                    return;
+                }
+                let target = players.findIndex(innerArray => innerArray[0] === msg.user.name);
+                players[target][1]++;
+                presence.sendMessage(presence.getSharedInfo().id, {
+                    user: presence.getUserInfo(),
+                    action: 'update',
+                    content: players
+                })
+                console.log(msg.user.name + " was the fastest");
+                console.log(players)
+                showLeaderboard();
+                presenceIndex++;
+                startDoctorModePresence();
+
+
+            }
+
+            if (msg.action == 'startDoctor') {
                 showLeaderboard()
+                isPaintActive = false
+                isLearnActive = false
+                isTourActive = false
+                isDoctorActive = true
             }
         }
 
@@ -234,9 +267,7 @@ define([
         })
 
         var onNetworkUserChanged = function (msg) {
-            console.log('new user joined')
             players.push([msg.user.name, 0])
-            console.log("runing from 239")
             if (isDoctorActive) {
                 showLeaderboard()
             }
@@ -248,7 +279,7 @@ define([
                 })
             }
 
-            if (doctorMode) {
+            if (isDoctorActive) {
                 presence.sendMessage(presence.getSharedInfo().id, {
                     user: presence.getUserInfo(),
                     action: 'startDoctor',
@@ -336,8 +367,6 @@ define([
             // If switching to Doctor mode, start it
             if (isDoctorActive) {
                 if (presence) {
-                    console.log("runing from 339")
-
                     showLeaderboard()
 
                     presence.sendMessage(presence.getSharedInfo().id, {
@@ -345,6 +374,7 @@ define([
                         action: 'startDoctor',
                         content: players,
                     })
+                    ifDoctorHost = true;
                     startDoctorModePresence()
                 } else {
                     console.log('starting doctor mode')
@@ -354,13 +384,13 @@ define([
         }
 
         function showLeaderboard() {
-            console.log("running show leaderboard")
+            console.log('running show leaderboard')
             var leaderboard = document.getElementById('leaderboard')
             leaderboard.style.display = 'block'
             let playerScores = players
-            var tableBody = document.querySelector('.leaderboard tbody');
+            var tableBody = document.querySelector('.leaderboard tbody')
 
-            tableBody.innerHTML = '';
+            tableBody.innerHTML = ''
             for (var i = 0; i < playerScores.length; i++) {
                 var playerName = playerScores[i][0] // Get player name
                 var playerScore = playerScores[i][1] // Get player score
@@ -520,10 +550,16 @@ define([
         }
 
         function startDoctorModePresence() {
-            currentBodyPartIndex = 0
-            if (bodyParts[currentBodyPartIndex]) {
-                showModal('Find the ' + bodyParts[currentBodyPartIndex].name)
-            }
+                presence.sendMessage(presence.getSharedInfo().id, {
+                    user: presence.getUserInfo(),
+                    action: 'nextQuestion',
+                    content: presenceIndex,
+                })
+                if (bodyParts[presenceIndex]) {
+                    showModal('Find the ' + bodyParts[presenceIndex].name)
+                } else {
+                    showModal('Game Over')
+                }
         }
 
         function stopDoctorMode() {
@@ -834,22 +870,53 @@ define([
                         }
                     }
                 } else if (isDoctorActive) {
-                    const targetMeshName = bodyParts[currentBodyPartIndex].mesh
-                    if (object.name === targetMeshName) {
-                        showModal(
-                            'Correct! Next: ' +
-                                bodyParts[++currentBodyPartIndex]?.name
-                        )
+                    if (presence) {
+                        const targetMeshName =
+                            bodyParts[presenceCorrectIndex].mesh
+                        if (object.name === targetMeshName) {
+                            if (ifDoctorHost) {
+                                firstAnswer = true;
+                                let target = players.findIndex(innerArray => innerArray[0] === username);
+                                players[target][1]++;
+                                presence.sendMessage(presence.getSharedInfo().id, {
+                                    user: presence.getUserInfo(),
+                                    action: 'update',
+                                    content: players
+                                })
+                                presenceIndex++;
+                                startDoctorModePresence();
+                                console.log("host was first")
+                                console.log(players)
+                            }
+                            if (!ifDoctorHost) {
+                                presence.sendMessage(presence.getSharedInfo().id, {
+                                    user: presence.getUserInfo(),
+                                    action: 'answer',
+                                })
+                            }
+                            showModal('Correct! But were you the fastest?')                            
+                        } else {
+                            showModal('Wrong!')
+                        }
                     } else {
-                        showModal(
-                            'Wrong! Try to find ' +
-                                bodyParts[++currentBodyPartIndex]?.name
-                        )
-                    }
+                        const targetMeshName =
+                            bodyParts[currentBodyPartIndex].mesh
+                        if (object.name === targetMeshName) {
+                            showModal(
+                                'Correct! Next: ' +
+                                    bodyParts[++currentBodyPartIndex]?.name
+                            )
+                        } else {
+                            showModal(
+                                'Wrong! Try to find ' +
+                                    bodyParts[++currentBodyPartIndex]?.name
+                            )
+                        }
 
-                    if (currentBodyPartIndex >= bodyParts.length) {
-                        showModal('Game over! You found all parts.')
-                        stopDoctorMode()
+                        if (currentBodyPartIndex >= bodyParts.length) {
+                            showModal('Game over! You found all parts.')
+                            stopDoctorMode()
+                        }
                     }
                 } else if (isLearnActive) {
                     let clickedBodyPart = bodyParts.find(
