@@ -28,6 +28,7 @@ define([
 		let presenceIndex = 0;
 		let ifDoctorHost = false;
 		let firstAnswer = true;
+        let numModals = 0;
 
 		var paletteColorFill = new colorpaletteFill.ColorPalette(
 			document.getElementById("color-button-fill"),
@@ -224,6 +225,7 @@ define([
 			}
 
 			if (msg.action == "answer") {
+                console.log("answering")
 				if (!ifDoctorHost || !firstAnswer) {
 					return;
 				}
@@ -240,7 +242,7 @@ define([
 				console.log(players);
 				showLeaderboard();
 				presenceIndex++;
-				startDoctorModePresence();
+				// startDoctorModePresence();
 			}
 
 			if (msg.action == "startDoctor") {
@@ -595,11 +597,19 @@ define([
 			modal.style.color = "#333"; // Darker text color for better contrast
 
 			modal.innerHTML = text;
-			document.body.appendChild(modal);
+            numModals++;
+            // if (numModals > 1) {
+            //     console.log("have modals already")
+            //     modal.style.top = "30%"
+            // }
+            document.body.appendChild(modal);
+
+            
 
 			// Make the modal disappear after 1.5 seconds
 			setTimeout(() => {
 				document.body.removeChild(modal);
+                numModals--;
 			}, 1500);
 		}
 
@@ -757,23 +767,23 @@ define([
 			});
 		}
 
-		loader.load(
-			"models/heart/heart.gltf",
-			function (gltf) {
-				gltf.scene.position.y += 4;
-				setModelColor(gltf.scene, new THREE.Color(0xff0000));
-				scene.add(gltf.scene);
+		// loader.load(
+		// 	"models/heart/heart.gltf",
+		// 	function (gltf) {
+		// 		gltf.scene.position.y += 4;
+		// 		setModelColor(gltf.scene, new THREE.Color(0xff0000));
+		// 		scene.add(gltf.scene);
 
-				console.log("Heart loaded", gltf.scene);
-			},
-			function (xhr) {
-				console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
-			},
-			function (error) {
-				console.log("An error happened");
-				console.log(error);
-			}
-		);
+		// 		console.log("Heart loaded", gltf.scene);
+		// 	},
+		// 	function (xhr) {
+		// 		console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+		// 	},
+		// 	function (error) {
+		// 		console.log("An error happened");
+		// 		console.log(error);
+		// 	}
+		// );
 
 		// loader.load(
 		//     'models/digestive/digestive.gltf',
@@ -883,6 +893,7 @@ define([
 								let target = players.findIndex(
 									(innerArray) => innerArray[0] === username
 								);
+                                console.log("the doctor is in")
 								players[target][1]++;
 								presence.sendMessage(
 									presence.getSharedInfo().id,
@@ -892,8 +903,8 @@ define([
 										content: players,
 									}
 								);
-								startDoctorModePresence();
-								presenceIndex++;
+                                // presenceIndex++;
+								// startDoctorModePresence();
 								showLeaderboard();
 							}
 							if (!ifDoctorHost) {
@@ -906,6 +917,8 @@ define([
 								);
 							}
 							showModal("Correct! But were you the fastest?");
+                            presenceIndex++;
+                            setTimeout(startDoctorModePresence, 1500)
 						} else {
 							showModal("Wrong!");
 						}
