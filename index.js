@@ -29,8 +29,7 @@ define([
 		let ifDoctorHost = false;
 		let firstAnswer = true;
         let numModals = 0;
-		let skeleton, skin, brain, heart, digestive,lungs;
-		
+		let skeleton, skin;
 
 		var paletteColorFill = new colorpaletteFill.ColorPalette(
 			document.getElementById("color-button-fill"),
@@ -329,7 +328,7 @@ define([
 				camera.updateProjectionMatrix();
 
 				// Display the name of the part using the modal
-				showModal(`This is the ${part.name}`);
+				showModal(This is the ${part.name});
 
 				tourIndex++;
 
@@ -729,90 +728,29 @@ define([
 		orbit.listenToKeyEvents(document.querySelector("body"));
 
 		const loader = new THREE.GLTFLoader();
+		
 
-		let loadedModels = []; // Store references to all loaded models
-
-// Function to remove all models from the scene
-function clearscene() {
-    loadedModels.forEach(model => scene.remove(model)); // Remove all stored models
-    loadedModels = []; // Clear the array
-}
-
-// Heart Button Click
-document.getElementById("heart-button").addEventListener("click", function () {
-    // clearscene(); // Clear previous models
-	scene.remove(skeleton);
-	scene.remove(skin);
-    loader.load("models/brain/brain.gltf", function (gltf) {
-        brain = gltf.scene;
-        brain.name = "brain";
-        brain.scale.set(-1.5, 1.5, 1.5);
-        brain.position.y += 6;
-        scene.add(brain);
-        loadedModels.push(brain);
-    });
-
-    loader.load("models/lungs/lungs.gltf", function (gltf) {
-        lungs = gltf.scene;
-        lungs.name = "lungs";
-        lungs.scale.set(15.5, 15.5, 15.5);
-        lungs.position.y += 0;
-        scene.add(lungs);
-        loadedModels.push(lungs);
-    });
-
-    loader.load("models/heart/heart.gltf", function (gltf) {
-        heart = gltf.scene;
-        heart.name = "heart";
-        heart.scale.set(1, 1, 1);
-        heart.position.y += 1;
-        heart.position.x += 0.25;
-        heart.position.z -= 0.9;
-        scene.add(heart);
-        loadedModels.push(heart);
-    });
-
-    loader.load("models/digestive/digestive.gltf", function (gltf) {
-        digestive = gltf.scene;
-        digestive.name = "digestive";
-        digestive.scale.set(-13, 13, 13);
-        digestive.position.x -= -1;
-        digestive.position.y -= 10;
-        digestive.position.z -= 1.7;
-        scene.add(digestive);
-        loadedModels.push(digestive);
-    });
-});
-
-// Skin Button Click
-document.getElementById("skin-button").addEventListener("click", function () {
-    clearscene(); // Clear previous models
-    scene.remove(skeleton);
-    loader.load("models/skin/skin.gltf", function (gltf) {
-        skin = gltf.scene;
-        skin.name = "skin";
-        skin.scale.set(0.6, 0.6, 0.75);
-        skin.position.y += -5;
-        scene.add(skin);
-        loadedModels.push(skin);
-    });
-});
-
-// Skull Button Click (Fix Skeleton Not Appearing)
-document.getElementById("skull-button").addEventListener("click", function () {
-    clearscene(); // Clear previous models
-
-    loader.load("models/skeleton/skeleton.gltf", function (gltf) {
-        skeleton = gltf.scene;
-        skeleton.name = "skeleton";
-        skeleton.scale.set(1, 1, 1);
-        skeleton.position.y += 0;
-        scene.add(skeleton);
-        loadedModels.push(skeleton);
-    });
-});
-
-
+		document.getElementById("skin-button").addEventListener("click", function () {
+			if (skin) {
+				scene.remove(skeleton);
+				scene.add(skin);
+			} else {
+				loader.load("models/skin/skin.gltf", function (gltf) {
+					skin = gltf.scene;
+					skin.name = "skin";
+					skin.scale.set(4, 4, 4);
+					skin.position.y += -5;
+					scene.remove(skeleton);
+					scene.add(skin);
+					console.log("Skin model loaded", skin);
+				}, function (xhr) {
+					console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+				}, function (error) {
+					console.log("An error happened");
+					console.log(error);
+				});
+			}
+		});
 
 		if (presence == null) {
 			loader.load(
@@ -842,8 +780,6 @@ document.getElementById("skull-button").addEventListener("click", function () {
 			);
 		}
 
-
-
 		function setModelColor(model, color) {
 			model.traverse((node) => {
 				if (node.isMesh) {
@@ -854,44 +790,8 @@ document.getElementById("skull-button").addEventListener("click", function () {
 			});
 		}
 
-		// loader.load(
-		// 	"models/heart/heart.gltf",
-		// 	function (gltf) {
-		// 		gltf.scene.position.y += 4;
-		// 		setModelColor(gltf.scene, new THREE.Color(0xff0000));
-		// 		scene.add(gltf.scene);
 
-		// 		console.log("Heart loaded", gltf.scene);
-		// 	},
-		// 	function (xhr) {
-		// 		console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
-		// 	},
-		// 	function (error) {
-		// 		console.log("An error happened");
-		// 		console.log(error);
-		// 	}
-		// );
-
-		// loader.load(
-		//     'models/digestive/digestive.gltf',
-		//     function (gltf) {
-		//         gltf.scene.position.y += 3;
-		//         gltf.scene.scale.set(4, 4, 4);
-		//         setModelColor(gltf.scene, new THREE.Color(0x00ff00));
-		//         scene.add(gltf.scene);
-
-		//         console.log('Digestive system loaded', gltf.scene);
-		//     },
-		//     function (xhr) {
-		//         console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-		//     },
-		//     function (error) {
-		//         console.log('An error happened');
-		//         console.log(error);
-		//     }
-		// );
-
-		const raycaster = new THREE.Raycaster();
+        const raycaster = new THREE.Raycaster();
 		const mouse = new THREE.Vector2();
 
 		function getClicked3DPoint() {
@@ -925,7 +825,7 @@ document.getElementById("skull-button").addEventListener("click", function () {
 				const pointString = `(${point.x.toFixed(2)}, ${point.y.toFixed(
 					2
 				)}, ${point.z.toFixed(2)})`;
-				console.log(`Clicked Point: ${pointString}`);
+				console.log(Clicked Point: ${pointString});
 
 				const object = intersects[0].object;
 
@@ -1034,7 +934,7 @@ document.getElementById("skull-button").addEventListener("click", function () {
 						(part) => part.mesh === object.name
 					);
 					if (isLearnActive && clickedBodyPart) {
-						showModal(`You clicked on: ${clickedBodyPart.name}`);
+						showModal(You clicked on: ${clickedBodyPart.name});
 					}
 				}
 			}

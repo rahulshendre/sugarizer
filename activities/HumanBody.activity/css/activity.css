@@ -280,3 +280,11 @@ body {
     background-image: url(../icons/skin.svg);
     outline: none;
 }
+#heart-button {
+    height: 45px;
+    width: 45xpx;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-image: url(../icons/heart_icon.svg);
+    outline: none;
+}
