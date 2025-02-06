@@ -264,4 +264,19 @@ body {
 }
 
 
-
+#skull-button {
+    height: 45px;
+    width: 45xpx;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-image: url(../icons/skull.svg);
+    outline: none;
+}
+#skin-button {
+    height: 45px;
+    width: 45xpx;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-image: url(../icons/skin.svg);
+    outline: none;
+}
