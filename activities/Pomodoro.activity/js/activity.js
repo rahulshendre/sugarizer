@@ -332,7 +332,7 @@ function main(Progress, Stopwatch, l10n, color, datastore) {
   };
 
   function resetTimer() {
-    setProgress(1, this.state.workTimerLimit * 60 * 1000)
+    setProgress(this.state.workTimerLimit, this.state.workTimerLimit * 60 * 1000)
     this.state.timerLeftAt = false
     this.state.progressLeftAt = false
   }
