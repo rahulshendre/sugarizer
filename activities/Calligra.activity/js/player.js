@@ -383,6 +383,10 @@ var Player = {
 
 		startDemoMode: function() {
 			var vm = this;
+			if (vm.current.timeout) {
+				clearTimeout(vm.current.timeout);
+				vm.current.timeout = null;
+			}
 			var timeout = 70/(vm.isText?vm.item.text.length:1);
 			vm.mode = 'show';
 			var step = function() {
